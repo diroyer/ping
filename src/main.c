@@ -186,7 +186,6 @@ int send_ping(t_ping *data, unsigned char *packet)
 }
 
 /* icmp_seq is the sequence number of the ICMP packet, ident is the identifier, ttl is the time to live, and rtt is the round trip time in milliseconds */
-
 void print_first(const t_ping *data)
 {
 	if (data->verbose)
@@ -208,6 +207,17 @@ void print_mid(t_icmp_reply *reply, double rtt)
 		rtt);
 }
 
+/* This print is the print from inetutils 2.0 */
+void print_mid_old(t_icmp_reply *reply, double rtt)
+{
+	printf("%ld bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
+		sizeof(struct icmphdr) + PAYLOAD_SIZE,
+		inet_ntoa(reply->addr.sin_addr),
+		reply->seq,
+		reply->ttl,
+		rtt);
+}
+
 void print_last(t_ping *data)
 {
 	t_stats *stats = &data->stats;
@@ -215,7 +225,7 @@ void print_last(t_ping *data)
 	const int packet_loss = stats->transmitted > 0 ? (stats->transmitted - stats->received) * 100 / stats->transmitted : 0;
 
 	printf("\n--- %s ping statistics ---\n", data->ip);
-	printf("%d packets transmitted, %d received, %d%% packet loss\n",
+	printf("%d packets transmitted, %d packets received, %d%% packet loss\n",
 		stats->transmitted, stats->received, packet_loss);
 
 	if (stats->received > 0)
@@ -236,13 +246,15 @@ int icmp_parse(const char* buffer, ssize_t len, t_icmp_reply* out)
 
     const struct icmp* icmp = (const struct icmp*)(buffer + ip_hlen);
 
+	printf("icmp_type: %d, icmp_code: %d, icmp_id: %d, icmp_seq: %d\n", icmp->icmp_type, icmp->icmp_code, ntohs(icmp->icmp_id), ntohs(icmp->icmp_seq));
+
     if (icmp->icmp_type != ICMP_ECHOREPLY) {
         out->type = icmp->icmp_type;
         out->code = icmp->icmp_code;
         return 1;
     }
 
-	if (ntohs(icmp->icmp_id) != (uint16_t)(getpid() & 0xffff))
+	if (ntohs(icmp->icmp_id) != (uint16_t)(getpid() & 0xFFFF))
 		return -1;
 
 
@@ -310,7 +322,7 @@ int receive_ping(t_ping *data)
 
 	stats->rtt_sum += rtt;
 
-	print_mid(&reply, rtt);
+	print_mid_old(&reply, rtt);
 
 	return 1;
 }

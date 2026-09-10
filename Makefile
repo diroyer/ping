@@ -13,7 +13,7 @@ override deps := $(srcs:%.c=%.d)
 
 def :=
 
-override cflags := -Wall -Wextra -Werror -g -O0 -I$(src_dir) $(def)
+override cflags := -Wall -Wextra -Werror -Wpedantic -g -O0 -I$(src_dir) $(def)
 
 override depflags = -MT $@ -MMD -MF $(src_dir)/$*.d
 
