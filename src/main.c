@@ -14,10 +14,14 @@
 #include <float.h>
 #include "ping.h"
 
+#ifdef DEBUG
 #define debug_print(fmt, ...) \
 	do { \
 		fprintf(stderr, "DEBUG: %s:%d:%s(): " fmt, __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
 	} while (0)
+#else
+#define debug_print(fmt, ...) do {} while (0)
+#endif
 
 void print_help()
 {
@@ -29,6 +33,19 @@ void print_help()
 
 	fprintf(stderr, "%s", help_message);
 	exit(0);
+}
+
+char *get_reverse_dns(struct sockaddr_in *addr)
+{
+	static char host[NI_MAXHOST];
+
+	if (getnameinfo((struct sockaddr *)addr, sizeof(*addr),
+					host, sizeof(host),
+					NULL, 0, NI_NAMEREQD) == 0)
+	{
+		return host;
+	}
+	return NULL;
 }
 
 int	check_args(int argc, char **argv, t_ping *data)
@@ -173,17 +190,18 @@ int send_ping(t_ping *data, unsigned char *packet)
 void print_first(const t_ping *data)
 {
 	if (data->verbose)
-		printf("PING %s (%s): 56 data bytes, id 0x%04x = %d\n",
-				data->ip, inet_ntoa(data->addr.sin_addr), data->pid, data->pid);
+		printf("PING %s (%s): %d data bytes, id 0x%04x = %d\n",
+				data->ip, inet_ntoa(data->addr.sin_addr), PAYLOAD_SIZE, data->pid, data->pid);
 	else
-		printf("PING %s (%s): 56 data bytes\n",
-				data->ip, inet_ntoa(data->addr.sin_addr));
+		printf("PING %s (%s): %d data bytes\n",
+				data->ip, inet_ntoa(data->addr.sin_addr), PAYLOAD_SIZE);
 }
 
 void print_mid(t_icmp_reply *reply, double rtt)
 {
-	printf("%ld bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
+	printf("%ld bytes from %s (%s): icmp_seq=%d ttl=%d time=%.3f ms\n",
 		sizeof(struct icmphdr) + PAYLOAD_SIZE,
+		get_reverse_dns(&reply->addr) ? get_reverse_dns(&reply->addr) : "unknown",
 		inet_ntoa(reply->addr.sin_addr),
 		ntohs(reply->seq),
 		reply->ttl,
